@@ -1,1 +1,4 @@
 *.pyc
+getINIfromSNMPc.py
+myConfigParser.py
+hosts_snmpc.*
