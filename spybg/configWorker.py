@@ -9,7 +9,7 @@ import re
 
 import ConfigParser
 
-from sdtg import commonFuncs, snmpAgent
+from spybg import commonFuncs, snmpAgent
 
 #
 # ifHCInMulticastPkts:  1.3.6.1.2.1.31.1.1.1.8
