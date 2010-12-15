@@ -141,7 +141,8 @@ for host in cw.hosts:
         ifnamesConfig.add_section('global')
         ifnamesConfig.set('global', 'name', host.hostname)
         ifnamesConfig.set('global', 'ip', host.ip)
-        ifnamesConfig.set('global', 'hc', host.hc)
+        # ifnamesConfig.set('global', 'hc', host.hc)
+        ifnamesConfig.set('global', 'oidset', host.oidset)
         ifnamesConfig.set(
                 'global',
                 'ports',
@@ -163,6 +164,8 @@ for host in cw.hosts:
             except TypeError:
                 print "\nError grabbing info from %s, skipping...\n" % host.hostname
                 cw.hosts.remove(host)
+                print configWorker.getAliasOid(host)
+                raise
                 continue
         else:
             (vendor, ifa_oid) = ('unkn', host.ifaliasoid)

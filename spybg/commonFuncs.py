@@ -38,6 +38,9 @@ def sortStrNum(s1, s2):
     """Sorts strings numerically."""
     return cmp(int(s1), int(s2))
 
+def string2tuple(string, splitby='.', func=(lambda x: x)):
+    return tuple([func(s.strip()) for s in string.split(splitby)])
+
 #
 # vim: expandtab ts=4 tabstop=4 shiftwidth=4 softtabstop=4:
 ######################

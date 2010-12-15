@@ -9,81 +9,9 @@ import re
 
 import ConfigParser
 
-from spybg import commonFuncs, snmpAgent
+import commonFuncs, snmpAgent, oidManager
 
-#
-# ifHCInMulticastPkts:  1.3.6.1.2.1.31.1.1.1.8
-# ifHCOutMulticastPkts: 1.3.6.1.2.1.31.1.1.1.12
-# 
-# ifInDiscards:  1.3.6.1.2.1.2.2.1.13
-# ifOutDiscards: 1.3.6.1.2.1.2.2.1.19
-#
-# ifInErrors:  1.3.6.1.2.1.2.2.1.14
-# ifOutErrors: 1.3.6.1.2.1.2.2.1.20
-#
-
-oids = [
-    snmpAgent.oid(
-            'IfInOctets',
-            (1,3,6,1,2,1,2,2,1,10),
-            'in_bytes'),
-    snmpAgent.oid(
-            'IfOutOctets',
-            (1,3,6,1,2,1,2,2,1,16),
-            'out_bytes'),
-    snmpAgent.oid(
-            'ifInUcastPkts',
-            (1,3,6,1,2,1,2,2,1,11),
-            'in_upkts'),
-    snmpAgent.oid(
-            'ifOutUcastPkts',
-            (1,3,6,1,2,1,2,2,1,17),
-            'out_upkts'),
-    snmpAgent.oid(
-            'ifInNUcastPkts',
-            (1,3,6,1,2,1,2,2,1,12),
-            'in_nupkts'),
-    snmpAgent.oid(
-            'ifOutNUcastPkts',
-            (1,3,6,1,2,1,2,2,1,18),
-            'out_nupkts'),
-]
-
-HCoids = [
-    snmpAgent.oid(
-            'IfHCInOctets',
-            (1,3,6,1,2,1,31,1,1,1,6),
-            'in_bytes'),
-    snmpAgent.oid(
-            'IfHCOutOctets',
-            (1,3,6,1,2,1,31,1,1,1,10),
-            'out_bytes'),
-    snmpAgent.oid(
-            'ifHCInUcastPkts',
-            (1,3,6,1,2,1,31,1,1,1,7),
-            'in_upkts'),
-    snmpAgent.oid(
-            'ifHCOutUcastPkts',
-            (1,3,6,1,2,1,31,1,1,1,11),
-            'out_upkts'),
-    snmpAgent.oid(
-            'ifHCInBroadcastPkts',
-            (1,3,6,1,2,1,31,1,1,1,9),
-            'in_bpkts'),
-    snmpAgent.oid(
-            'ifHCOutBroadcastPkts',
-            (1,3,6,1,2,1,31,1,1,1,13),
-            'out_bpkts'),
-    snmpAgent.oid(
-           'ifHCInMulticastPkts',
-           (1,3,6,1,2,1,31,1,1,1,8),
-           'in_mpkts'),
-    snmpAgent.oid(
-           'ifHCOutMulticastPkts',
-           (1,3,6,1,2,1,31,1,1,1,12),
-           'out_mpkts'),
-]
-
+"""
 ifnameoids = {
     '1.3.6.1.2.1.31.1.1.1.1':
         snmpAgent.oid('IfName', (1,3,6,1,2,1,31,1,1,1,1), 'name'),
@@ -92,18 +20,7 @@ ifnameoids = {
     '1.3.6.1.2.1.31.1.1.1.18':
         snmpAgent.oid('IfAlias', (1,3,6,1,2,1,31,1,1,1,18), 'alias'),
 }
-
-
-#
-#D-Link:
-#    Dlink DES-3026 Fast Ethernet Switch
-#    DES-3226S Fast-Ethernet Switch
-#
-#ZyXEL:
-#    GS-4012F
-#    ES-3124
-#
-
+"""
 
 def getAliasOid(host):
     vendId = {
@@ -138,21 +55,19 @@ def getAliasOid(host):
 
     host.getTables(
             oids=[oid], results=[result],
-            iftable=False   # that's not an ifaces table.
+            iftable=False  # that's not an ifaces table
         )
+
     if host.errors != 0:
         return None
 
     # "guess" vendor:
-    #for id in vendId.keys():
     for id, vend in vendId.items():
-        # print result
-        if re.compile(id).search(str(result[0])):
+        if re.compile(id).search(result[0]):
             return (
                     vend[0],
                     snmpAgent.oid('IfAlias', vend[1], 'alias')
                    )
-
     return None
 
 
@@ -166,25 +81,78 @@ class configWorker:
         #
         self.configRead()
 
+    def oidsRead(self, configfile=None):
+        # TODO: check configfile.
+        self.oidscfg = ConfigParser.ConfigParser()
+        self.oidscfg.read(self.configfile)
+        self.oidMgr = oidManager.oidManager()
+        #
+        # read oids subsets and sets:
+        # sets[setname] -> list of oids
+        subsets = dict()
+        for subset , value in self.oidscfg.items('oids_subsets'):
+            subsets[subset] = [ s.strip() for s in value.split(',') ]
+
+        sets = dict()
+        for set_ , value in self.oidscfg.items('oids_sets'):
+            sets[set_] = []
+            for s in value.split(','):
+                sets[set_].extend(subsets[s.strip()])
+
+        #
+        # read config file and "fill" oidMgr with oids:
+        for alias, values in self.oidscfg.items('oids'):
+            alias_value = values.split()
+            av_len = len(alias_value)
+            if av_len == 4:
+                oid_as_str, rrdDST, rrdMin, rrdMax = alias_value
+            elif av_len == 3:
+                oid_as_str, rrdDST, rrdMin = alias_value
+                rrdMax = 4250000000
+            elif av_len == 2:
+                oid_as_str, rrdDST = alias_value
+                rrdMin = 0
+                rrdMax = 4250000000
+            else:
+                oid_as_str = alias_value[0]
+                rrdDST = 'COUNTER'
+                rrdMin = 0
+                rrdMax = 4250000000
+            
+            for g, l in sets.items():
+                if alias in l:
+                    self.oidMgr.newOid(
+                            alias,
+                            commonFuncs.string2tuple(oid_as_str, func=int),
+                            alias,
+                            memberof=[g],
+                            rrdDST=rrdDST,
+                            rrdMin=int(rrdMin),
+                            rrdMax=int(rrdMax)
+                            )
+
+        #for k, v in self.oidMgr.sets.items():
+        #    print '%s -> %s' % (k, ', '.join([s.alias for s in v]))
+
     def configRead(self):
+        # read oids:
+        self.oidsRead()
+        
         # main config:
         self.config = ConfigParser.ConfigParser()
-        # self.config.read(self.configfile)
-        fp = open(self.configfile)
-        self.config.readfp(fp)
-        fp.close()
+        self.config.read(self.configfile)
         #
         if self.config.has_option('global', 'maxthreads'):
             self.maxthreads = int(self.config.get('global', 'maxthreads'))
 
-        #
-        # default for ports:
-        if self.config.has_option('hosts', 'ports'):
-            ports = self.config.get('hosts', 'ports')
-            if ports == 'any':
-                ports = None
-        else:
-            ports = None
+        ##
+        ## default for ports:
+        #if self.config.has_option('hosts', 'ports'):
+        #    ports = self.config.get('hosts', 'ports')
+        #    if ports == 'any':
+        #        ports = None
+        #else:
+        #    ports = None
 
         #
         # hostdir (where rrd bases should be):
@@ -251,26 +219,32 @@ class configWorker:
             if self.hostsconfig.has_option(host, 'ports'):
                 p = self.hostsconfig.get(host, 'ports')
             else:
-                p = ports
+                p = None
+
             h.ports = self.parseNumbers(p)
 
             #
             # ifnameoid:
             if self.hostsconfig.has_option(host, 'ifnameoid'):
                 ifnameoidname = self.hostsconfig.get(host, 'ifnameoid')
-                h.ifnameoid = ifnameoids[ifnameoidname]
-            #
+                h.ifnameoid = self.oidMgr.newOid(
+                        'IfName',
+                        tuple([int(s) for s in ifnameoidname.split('.')]),
+                        'ifname')
+            #else:
+            #   # set by default to IfName -- see snmpAgent.snmpDevice.__init__()
+            #   pass
+
             # ifaliasoid:
             if self.hostsconfig.has_option(host, 'ifaliasoid'):
                 ifaliasoidname = self.hostsconfig.get(host, 'ifaliasoid')
-                h.ifaliasoid = snmpAgent.oid(
-                                'IfAlias',
-                                tuple(
-                                    [ int(s) for s in ifaliasoidname.split('.') ]
-                                ),
-                                'alias')
+                h.ifaliasoid = self.oidMgr.newOid(
+                        'IfAlias',
+                        tuple([int(s) for s in ifaliasoidname.split('.')]),
+                        'ifalias')
             else:
                 h.ifaliasoid = None
+
             #
             # rrd hostdir:
             h.hostdir = commonFuncs.cleanHostdirName(
@@ -294,18 +268,26 @@ class configWorker:
 
             #
             #--------------------------------------------
-            #
-            # oids to get -- high res. (HC) by default:
-            if self.hostsconfig.has_option(host, 'hc'):
-                if self.hostsconfig.get(host, 'hc') in ('off', '0'):
-                    h.hc = False
-                    h.oids = oids
-                else:
-                    h.oids = HCoids
-                    h.hc = True
+            if self.hostsconfig.has_option(host, 'oidset'):
+                h.oidset = self.hostsconfig.get(host, 'oidset')
             else:
-                h.oids = HCoids
-                h.hc = True
+                # oids to get -- high res. (HC) by default:
+                if self.hostsconfig.has_option(host, 'hc'):
+                    if self.hostsconfig.get(host, 'hc') in ('off', '0'):
+                        h.oidset = 'small_default'
+                    else:
+                        h.oidset = 'default'
+                else:
+                    h.oidset = 'default'
+
+            h.oids = self.oidMgr.sets[h.oidset]
+
+            # index increment -- some devices' indexes need to be [in|de]cremented,
+            # to sync indexes between tables:
+            if self.hostsconfig.has_option(host, 'indinc'):
+                h.indexinc = int(self.hostsconfig.get(host, 'indinc'))
+            else:
+                h.indexinc = 0
 
             h.results = []
             for o in h.oids:
@@ -317,12 +299,9 @@ class configWorker:
             # create cmdgen.AsynCommandGenerator() for this host:
             h.asynCommandGenerator()
 
-            #
-            ## append to a list of hosts:
             #--------------------------------------------
             self.hosts.append(h)
             #--------------------------------------------
-
 
 
     def configWrite(self, filename):
@@ -336,7 +315,7 @@ class configWorker:
             for tok in csv:
                 dsv = tok.split('-')
                 if len(dsv) == 2:
-                    for i in range(int(dsv[0]), int(dsv[1]) + 1):
+                    for i in range(int(dsv[0]), int(dsv[1])+1):
                         list.append(i)
                 elif len(dsv) == 1:
                     list.append(int(tok))
@@ -356,11 +335,10 @@ class configWorker:
 
 
 if __name__ == '__main__':
-    cw = configWorker ( 'config.ini' )
+    cw = configWorker('config.ini')
 
-    cw.printHosts ()
+    cw.printHosts()
 
 #
-#
-# vim: expandtab ts=4:
+# vim: expandtab ts=4 tabstop=4 shiftwidth=4 softtabstop=4:
 ######################

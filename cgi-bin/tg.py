@@ -114,7 +114,7 @@ for subd in rrdsubdirs:
     dev = tg_inc.device(ifacesConfig.get('global', 'name'))
 
     dev.ip = ifacesConfig.get('global', 'ip')
-    dev.hc = ifacesConfig.get('global', 'hc')
+    dev.oidset = ifacesConfig.get('global', 'oidset')
 
     if ifacesConfig.has_option('global', 'vendor'):
         dev.vendor = ifacesConfig.get('global', 'vendor')

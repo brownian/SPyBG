@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 
-from spybg import commonFuncs
+import commonFuncs
 
 class oid:
     def __init__(self, name, value, alias=None):
@@ -16,11 +16,14 @@ class oid:
         self.value = value 
         self.alias = alias
 
+    def __repr__(self):
+        return str(self.value).replace('(','').replace(')','').replace(' ','').replace(',','.')
+
 
 class snmpDevice:
-    def __init__(self, hostname, ip, community, version = 'v2c', port = 161,
-            timeout = 1, retries = 3,
-            ifnameoid = oid('IfName', (1,3,6,1,2,1,31,1,1,1,1), 'name')):
+    def __init__(self, hostname, ip, community, version='v2c',
+            port=161, timeout=1, retries=3,
+            ifnameoid=oid('IfName', (1,3,6,1,2,1,31,1,1,1,1), 'name')):
 
         self.hostname = hostname
         self.ip = ip
@@ -42,7 +45,7 @@ class snmpDevice:
         #
         # snmp errors:
         self.errors = 0
-        # time for snmp bulkget:
+        # timer for snmp bulkget:
         self.snmptime = 0.0
         #
         # oids and ports to be processed:
@@ -66,6 +69,7 @@ class snmpDevice:
         resdict = cbCtx[0]
         baseoid = cbCtx[1]
         ports = cbCtx[2]
+        doInc = cbCtx[3]
 
         bolen = len(baseoid)
 
@@ -85,14 +89,24 @@ class snmpDevice:
         if isinstance(resdict, dict):
             for row in varBinds:
                 for oid, val in row:
+                    # if we are inside needed table:
                     if oid[:bolen] == baseoid[:bolen]:
-                        index = oid[len(oid) - 1]
-                        if (index == 1000001) and (self.hostname[:7] == 'Extreme'):
-                            return
+                        # we should increment index by self.indexinc
+                        # if requested:
+                        if not doInc:
+                            index = oid[len(oid)-1]
+                        else:
+                            inc = doInc and self.indexinc or 0
+                            index = oid[len(oid)-1] + inc
+
+                        # "write" value into "proper cell":
                         if not ports or index in ports:
-                            # resdict[index] = str(val)
-                            resdict[index] = val
+                            resdict[index] = str(val)
+                    #
+                    # if we gone outside needed table:
                     else:
+                        #if self.hostname == 'MRV_L9':
+                        #    print resdict
                         return # stop on end-of-table
 
             return 1 # continue walking
@@ -115,7 +129,7 @@ class snmpDevice:
                     )
 
 
-    def getTables(self, oids=[], results=[], ports=[], iftable=True):
+    def getTables(self, oids=[], results=[], ports=[], iftable=True, doInc=False):
         """Fetches wanted tables using async command generator
         and transport Dispatcher.
         
@@ -132,15 +146,13 @@ class snmpDevice:
         ports = iftable and (ports or self.ports) or None
 
         for o, r in map(None, oids, results):
-
             requestHandle = self.asynCommandGenerator.asyncBulkCmd(
                     self.CommunityData,
                     self.UdpTransportTarget,
                     0, 20,
                     (o.value,),
-                    (self.cbFun, (r, o.value, ports))
+                    (self.cbFun, (r, o.value, ports, doInc))
                 )
-
 
         self.asynCommandGenerator.snmpEngine.transportDispatcher.runDispatcher()
 
@@ -151,8 +163,8 @@ class snmpDevice:
 
 
 
-    def getIfNames(self):
-        self.getTables([self.ifnameoid], [self.ifnamesDict])
+    def getIfNames(self, doInc=True):
+        self.getTables([self.ifnameoid], [self.ifnamesDict], doInc=doInc)
 
 
     def __str__(self):
@@ -193,3 +205,6 @@ class snmpZyXEL(snmpDevice):
         self.ifaliasoid = oid('IfAlias', (1,3,6,1,4,1,890,1,5,8,12,24,1,1,3), 'alias')
 
 
+#
+# vim: expandtab ts=4 tabstop=4 shiftwidth=4 softtabstop=4:
+######################
