@@ -8,6 +8,7 @@ import sys
 import cgi
 import cgitb; cgitb.enable()
 
+import pickle
 import ConfigParser
 
 import rrdtool
@@ -23,8 +24,8 @@ targetdevice = form.getvalue('device')
 
 targetiface = form.getvalue('iface')
 
-# what to show (bps, pps..):
-what = form.getvalue('what') or 'bps'
+# what to show (oid_subset name here):
+what = form.getvalue('what')
 
 # CF:
 cf = form.getvalue('cf') or 'avg'
@@ -114,7 +115,6 @@ for subd in rrdsubdirs:
     dev = tg_inc.device(ifacesConfig.get('global', 'name'))
 
     dev.ip = ifacesConfig.get('global', 'ip')
-    dev.oidset = ifacesConfig.get('global', 'oidset')
 
     if ifacesConfig.has_option('global', 'vendor'):
         dev.vendor = ifacesConfig.get('global', 'vendor')
@@ -122,12 +122,18 @@ for subd in rrdsubdirs:
         dev.vendor = None
 
     dev.hostname = commonFuncs.cleanHostdirName(dev.name)
+
+    dev.setname, dev.subsets = \
+            pickle.load(
+                open('%s/%s/oid_sets.pickle' % (
+                        rrddir, dev.hostname)))
+
     dev.ifacesfile = dev_ifacesfile
 
     dev.ifaces = ifacesConfig.items('ifnames')
     dev.ifacesDict = dict(dev.ifaces)
     dev.ifaliases = ifacesConfig.items('ifaliases')
-    dev.ifaliasesDict =dict(dev.ifaliases)
+    dev.ifaliasesDict = dict(dev.ifaliases)
 
     dev.picturepath = picturepath
 
@@ -161,79 +167,64 @@ if not targetdevice:
     """
 
     print """
-    <TABLE border="0">
-    <TR><TD><H1><A href="?">SPyBG Devices</A></H1><BR>
-        <TD align="right">
-            <a href="tg_status.py?device=System+Status">~</a>%i devices and %i interfaces total<BR>
-            <B><A href="tg_findiface.py">Find interface by
-            description</A></B><BR>
-            <B><A href="tg_aggregate.py">View (or manage?) aggregations</A></B>
+    <table border="0">
+    <tr><td><h1><a href="?">SPyBG Devices</a></a1><br></td>
+        <td align="right">
+            <a href="tg_status.py?device=System+Status">~</a>%i devices and %i interfaces total<br>
+            <b><b href="tg_findiface.py">Find interface by description</a></b><br>
+            <b><b href="tg_aggregate.py">View (or manage?) aggregations</a></b></td></tr>
 
-    <TR><TD valign="top">
+    <tr><td valign="top">
     """ % ( dleng, sum([ len(x.ifaces) for x in devices ]) )
 
+    def listrow(index):
+        thisdev = devices[i]
+        return """
+           <tr valign="center">
+            <td>%i</d>
+            <td>%s</td>
+            <td>%s</td>
+            <td>%s</td>
+           </tr>
+        """ % (
+                (i + 1),
+                thisdev.hostname,
+                ', '.join([
+                        '<a href="?device=%s&what=%s" title="%s">%s</a>' % \
+                            (thisdev.hostname, s, ', '.join(it), s)
+                                for s, it in thisdev.subsets.items()
+                    ]),
+                thisdev.vendor == 'cisco' and
+                    not (thisdev.name in cisconotswitches) and
+                        showintlink % (thisdev.ip, thisdev.ip) or thisdev.ip
+              )
 
 
     # left column:
     print """
-    <TABLE border="1">
-        <TR><TH>#<TH>Name<TH colspan="2">What<TH>Address
+    <table border="1">
+        <tr><th>#</th><th>Name</th><th>What</th><th>Address</th></tr>
     """
     for i in range(dhalf):
-        thisdev = devices[i]
-        print """
-           <TR valign="center">
-           <TD>%i
-           <TD>%s
-           <TD><A href="?device=%s" title="Bytes per second">bps</A>
-           <TD><A href="?device=%s&what=pps" title="Packets per second">pps</A>
-           <TD>%s
-        """ % (
-                (i + 1),
-                thisdev.hostname,
-                thisdev.hostname,
-                thisdev.hostname,
-                (
-                    thisdev.vendor == 'cisco' and
-                        not (thisdev.name in cisconotswitches) and
-                        showintlink % (thisdev.ip, thisdev.ip) or thisdev.ip
-                )
-              )
+        print listrow(i)
 
     # right column:
     print """
-    </TABLE>
-    <TD valign="top">
-    <TABLE border="1">
-        <TR><TH>#<TH>Name<TH colspan="2">What<TH>Address
+    </table>
+    </td>
+    <td valign="top">
+    <table border="1">
+        <tr><th>#</th><th>Name</th><th>What</th><th>Address</th></tr>
     """
     for i in range(dhalf, dleng):
-        thisdev = devices[i]
-        print """
-           <TR valign="center">
-           <TD>%i
-           <TD>%s
-           <TD><A href="?device=%s" title="Bytes per second">bps</A>
-           <TD><A href="?device=%s&what=pps" title="Packets per second">pps</A>
-           <TD>%s
-        """ % (
-                (i + 1),
-                thisdev.hostname,
-                thisdev.hostname,
-                thisdev.hostname,
-                (
-                    thisdev.vendor == 'cisco' and
-                        not (thisdev.name in cisconotswitches) and
-                        showintlink % (thisdev.ip, thisdev.ip) or thisdev.ip
-                )
-              )
+        print listrow(i)
 
-
-    print """</TABLE>"""
+    print """</table>"""
 
 
     print """
-    </TABLE>
+    </td></tr>
+    </table>
     """ 
 
 
@@ -251,6 +242,9 @@ else:
                 and int(form.getvalue('S')) or 86400
         except:
             S = 86400
+
+        if not what or not what in targetDEVICE.subsets.keys():
+            what = targetDEVICE.subsets.keys()[0]
 
         print """
             <TITLE>%s : SPyBG -- SNMP Bulk Grapher</TITLE>
@@ -397,15 +391,9 @@ else:
 
             #
             # what to draw (bps, pps...):
-            if what == 'bps':
-                pic = tg_inc.drawPic[targetDEVICE.hc](picname, rrdb, title=pictitle, w=450,
-                        start=-S,
-                        h=100, loga=loga, logarange=logarange, cf=cf)
-            else:
-                pic = tg_inc.drawPic[targetDEVICE.hc](picname, rrdb, title=pictitle, w=450,
-                        start=-S,
-                        h=100, what='pps', loga=loga,
-                        logarange=logarange, cf=cf)
+            pic = tg_inc.drawPic(targetDEVICE, what, rrdb, picname,
+                    title=pictitle, w=450, start=-S,
+                    h=100, loga=loga, logarange=logarange, cf=cf)
 
             if pic:
                 print '<A href="?device=%s&iface=%s%s%s&cf=%s"><IMG src="/%s/%s" title="index: %s"></A>' % (
@@ -570,19 +558,9 @@ else:
 
             #
             # what to draw (bps, pps...):
-            if what == 'bps':
-                pic = tg_inc.drawPic[targetDEVICE.hc](picname, rrdbase, start=-start,
-                        title=None, w=450, h=100,
-                        loga=loga, logarange=logarange, cf=cf)
-            elif what == 'pps':
-                pic = tg_inc.drawPic[targetDEVICE.hc](picname, rrdbase, start=-start,
-                        title=None, w=450, h=100, what='pps',
-                        loga=loga, logarange=logarange, cf=cf)
-            else:
-                pic = tg_inc.drawPic[targetDEVICE.hc](picname, rrdbase, start=-start,
-                        title=None, w=450, h=100, what='bpp',
-                        loga=loga, logarange=logarange, cf=cf)
-                pass
+            pic = tg_inc.drawPic(targetDEVICE, what, rrdb, picname,
+                    start=-start, title=None, w=450, h=100,
+                    loga=loga, logarange=logarange, cf=cf)
 
             if pic:
                 print '<TR><TD colspan="2"><B>%s:</B><BR>' % (tranges[start])

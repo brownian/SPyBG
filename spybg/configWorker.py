@@ -11,16 +11,6 @@ import ConfigParser
 
 import commonFuncs, snmpAgent, oidManager
 
-"""
-ifnameoids = {
-    '1.3.6.1.2.1.31.1.1.1.1':
-        snmpAgent.oid('IfName', (1,3,6,1,2,1,31,1,1,1,1), 'name'),
-    '1.3.6.1.2.1.2.2.1.2':
-        snmpAgent.oid('IfDescr', (1,3,6,1,2,1,2,2,1,2), 'descr'),
-    '1.3.6.1.2.1.31.1.1.1.18':
-        snmpAgent.oid('IfAlias', (1,3,6,1,2,1,31,1,1,1,18), 'alias'),
-}
-"""
 
 def getAliasOid(host):
     vendId = {
@@ -88,16 +78,28 @@ class configWorker:
         self.oidMgr = oidManager.oidManager()
         #
         # read oids subsets and sets:
-        # sets[setname] -> list of oids
         subsets = dict()
         for subset , value in self.oidscfg.items('oids_subsets'):
             subsets[subset] = [ s.strip() for s in value.split(',') ]
 
-        sets = dict()
+        # sets_flatten[setname] -> list of oids
+        sets_flatten = dict()
         for set_ , value in self.oidscfg.items('oids_sets'):
-            sets[set_] = []
+            sets_flatten[set_] = []
             for s in value.split(','):
-                sets[set_].extend(subsets[s.strip()])
+                sets_flatten[set_].extend(subsets[s.strip()])
+
+        # sets[setname] -> dict: subsetname -> list of oids
+        self.sets = dict()
+        for set_ , value in self.oidscfg.items('oids_sets'):
+            self.sets[set_] = dict()
+            for s in value.split(','):
+                self.sets[set_][s.strip()] = subsets[s.strip()]
+
+
+        #print subsets
+        #print sets_flatten
+        #print self.sets
 
         #
         # read config file and "fill" oidMgr with oids:
@@ -119,7 +121,7 @@ class configWorker:
                 rrdMin = 0
                 rrdMax = 4250000000
             
-            for g, l in sets.items():
+            for g, l in sets_flatten.items():
                 if alias in l:
                     self.oidMgr.newOid(
                             alias,
@@ -281,6 +283,7 @@ class configWorker:
                     h.oidset = 'default'
 
             h.oids = self.oidMgr.sets[h.oidset]
+            h.sets = self.sets[h.oidset]
 
             # index increment -- some devices' indexes need to be [in|de]cremented,
             # to sync indexes between tables:

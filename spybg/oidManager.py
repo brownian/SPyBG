@@ -38,26 +38,23 @@ class oidSets(dict):
 class oidManager(dict):
     def __init__(self):
         dict.__init__(self)
-        # self.sets = dict()
         self.sets = oidSets()
 
     def newOid(self, name, oidtuple, alias, memberof=[],
             rrdDST=None, rrdMin=0, rrdMax=4250000000):
         if self.get(alias):
-            # print "This alias is already in use."
-            # raise RuntimeError
-            pass
+            print "This alias is already in use."
+            raise RuntimeError
+            # pass
 
-        #for a, o in self.items():
-        #    if o.name == name:
-        #        print "This name is already in use."
-        #        raise RuntimeError
+        for a, o in self.items():
+            if o.name == name:
+                print "This name is already in use."
+                raise RuntimeError
 
-        # oid = snmpAgent.oid(name, oidtuple, alias)
         oid = Oid(name, oidtuple, alias, rrdDST, rrdMin, rrdMax)
         self[alias] = oid
 
-        # TODO:
         for m in memberof:
             self.sets.addToSet(m, oid)
 
@@ -72,8 +69,6 @@ class oidManager(dict):
                 return o
         else:
             return None
-
-# oidmgr = oidManager()
 
 #
 # vim: expandtab ts=4 tabstop=4 shiftwidth=4 softtabstop=4:

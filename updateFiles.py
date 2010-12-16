@@ -9,6 +9,7 @@ import getopt
 
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 
+import pickle
 
 import ConfigParser
 
@@ -114,7 +115,6 @@ for host in cw.hosts:
     except Exception, why:
         print 'Host %s: cannot get table: %s' % (host.hostname, why)
 
-
     host.hostdir = '%s/%s' % (cw.rrdhostdir, cleanedhostname)
 
     if not os.access(host.hostdir, os.F_OK):
@@ -125,6 +125,10 @@ for host in cw.hosts:
             # should go to log?..
             print 'Error: can not create %s.' % host.hostdir
             sys.exit(-1)
+
+    # dump (setname, subsets) to hostdir:
+    pickle.dump((host.oidset, host.sets),
+                open("%s/oid_sets.pickle" % host.hostdir,'w'))
 
     #
     # INI:
@@ -141,8 +145,12 @@ for host in cw.hosts:
         ifnamesConfig.add_section('global')
         ifnamesConfig.set('global', 'name', host.hostname)
         ifnamesConfig.set('global', 'ip', host.ip)
-        # ifnamesConfig.set('global', 'hc', host.hc)
-        ifnamesConfig.set('global', 'oidset', host.oidset)
+        # ifnamesConfig.set('global', 'oidset', host.oidset)
+        #ifnamesConfig.set(
+        #        'global',
+        #        'oidsnames',
+        #        ', '.join([o.name for o in host.oids ])
+        #    )
         ifnamesConfig.set(
                 'global',
                 'ports',

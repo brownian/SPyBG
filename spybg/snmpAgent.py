@@ -105,8 +105,9 @@ class snmpDevice:
                     #
                     # if we gone outside needed table:
                     else:
-                        #if self.hostname == 'MRV_L9':
-                        #    print resdict
+                        # if self.hostname == 'RC_EPON':
+                        #     print
+                        #     print resdict
                         return # stop on end-of-table
 
             return 1 # continue walking
