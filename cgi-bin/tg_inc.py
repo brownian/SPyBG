@@ -16,11 +16,12 @@ import rrdtool
 from spybg import commonFuncs
 
 colordefs = [
-    '000000',
-    'aa0000',
-    'aa0000',
+    '0000bb',
     '00aa00',
-    '0000aa',
+    'aa0000',
+    '000000',
+    '909090',
+    '00ffff',
 ]
 
 class device:
@@ -59,7 +60,7 @@ def drawPic(device, what, rrdb, picname,
     }
     CF = CFs[cf]
 
-    colorspool = itertools.cycle(colordefs)
+    colors = itertools.cycle(colordefs)
 
     # common:
     graphargs = [
@@ -103,12 +104,11 @@ def drawPic(device, what, rrdb, picname,
 
     # 'LINE1:outbpp#5555CC:BPP Out',
     graphargs.extend([
-            'LINE1:%s#%s:%s' % (vname, colorspool.next(), vname)
+            'LINE1:%s#%s:%s' % (vname, colors.next(), vname)
                 for vname in device.subsets[what]
         ])
 
     # print graphargs
-
 
     try:
         rrdtool.graph(*graphargs)

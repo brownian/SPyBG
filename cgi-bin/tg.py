@@ -49,6 +49,7 @@ title = {
     'bpp': 'Bytes per packet'
 }
 
+
 print 'Content-type: text/html\n'
 print """<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <HEAD>
@@ -295,25 +296,31 @@ else:
         else:
             ifaceskeys.sort()
 
+        otherviewslink = """<a href="?device=%s&what=%s%s&cf=%s&S=%s">%s</a>"""
+
         print '<TABLE border="0">\n'
 
         print """<TR><TD align="left" valign="top">
             <H2><A href="?">ALL</A>: <A href="?device=%s%s">%s (%s)</A></H2><BR>
           <TD align="right" valign="top">
-            <B><A href="?device=%s&what=%s%s&cf=%s&S=%s">%s</A></B>
+            <B>%s</B>
         """ % (
                 targetDEVICE.hostname,
                 loga and '&loga=on' or '',
                 targetDEVICE.name,
                 targetDEVICE.ip,
-                targetDEVICE.hostname,
-                what == 'pps' and 'bps' or 'pps',
-                loga and '&loga=on' or '',
-                cf,
-                S,
-                what == 'pps' and 'bps' or 'pps'
+                #
+                ', '.join([
+                    otherviewslink % (
+                            targetDEVICE.hostname,
+                            what_,
+                            loga and '&loga=on' or '',
+                            cf,
+                            S,
+                            what_
+                        ) for what_ in targetDEVICE.subsets.keys()
+                            if not what_ == what ])
               )
-
 
         print """
             <TR><TD colspan="2" align="right">
@@ -447,7 +454,7 @@ else:
                 cf,
                 targetDEVICE.name,
                 targetDEVICE.ip,
-                title[what]
+                title.get(what, what)
             )
 
         print """
