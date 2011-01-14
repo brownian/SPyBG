@@ -296,7 +296,7 @@ else:
         else:
             ifaceskeys.sort()
 
-        otherviewslink = """<a href="?device=%s&what=%s%s&cf=%s&S=%s">%s</a>"""
+        otherviewlink = """<a href="?device=%s&what=%s%s&cf=%s&S=%s">%s</a>"""
 
         print '<TABLE border="0">\n'
 
@@ -311,7 +311,7 @@ else:
                 targetDEVICE.ip,
                 #
                 ', '.join([
-                    otherviewslink % (
+                    otherviewlink % (
                             targetDEVICE.hostname,
                             what_,
                             loga and '&loga=on' or '',
@@ -377,11 +377,14 @@ else:
                     targetDEVICE.hostname,
                     ifaceNameCleaned
                 )
+
             picshortname = '%s_%s.png' % (
                         targetDEVICE.hostname,
                         ifaceNameCleaned
                     )
+
             picname = '%s/%s' % (picturepath, picshortname)
+
             pictitle = '%s: %s' % (
                     ifaceName,
                     ifaceAlias or '(No descr)'
@@ -403,13 +406,14 @@ else:
                     h=100, loga=loga, logarange=logarange, cf=cf)
 
             if pic:
-                print '<A href="?device=%s&iface=%s%s%s&cf=%s"><IMG src="/%s/%s" title="index: %s"></A>' % (
+                print '<a href="?device=%s&iface=%s%s%s&cf=%s&what=%s"><img src="/%s/%s" title="index: %s"></a>' % (
                         targetDEVICE.hostname,
                         k,
                         what == 'pps' and '&what=pps' or '',
                         #
                         loga and '&loga=on' or '',
                         cf,
+                        what,
                         #
                         os.path.basename(picturepath),
                         picshortname,
@@ -457,40 +461,29 @@ else:
                 title.get(what, what)
             )
 
+        otherviewlink = """<a href="?device=%s&iface=%s&what=%s%s&cf=%s" title="%s">%s</q>"""
+
         print """
         <TR><!-- <TD colspan="2"> -->
             <TD>
             <B style="font-size:150%%;">%s: %s</B><BR>
             <TD align="right" valign="top">
-              <B><A href="?device=%s&iface=%s&what=%s%s&cf=%s" title="%s">%s</A></B><BR>
-              <B><A href="?device=%s&iface=%s&what=%s%s&cf=%s" title="%s">%s</A></B>
+              <b>%s</b>
         """ % (
                 ifaceName,
                 ifaceAlias,
-                targetDEVICE.hostname,
-                str(targetiface),
-                what == 'bps' and 'pps' or 'bps',
                 #
-                loga and '&loga=on' or '',
-                cf,
-                #
-                # title:
-                what == 'bps' and 'Packets per second' or \
-                        'Bytes per second',
-                #
-                what == 'bps' and 'pps' or 'bps',
-                targetDEVICE.hostname,
-                str(targetiface),
-                what == 'bpp' and 'pps' or 'bpp',
-                #
-                loga and '&loga=on' or '',
-                cf,
-                #
-                # title:
-                what == 'bpp' and 'Packets per second' or \
-                        'Bytes per packet',
-                #
-                what == 'bpp' and 'pps' or 'bpp',
+                ', '.join([
+                    otherviewlink % (
+                            targetDEVICE.hostname,
+                            str(targetiface),
+                            what_,
+                            loga and '&loga=on' or '',
+                            cf,
+                            what_,
+                            what_
+                        ) for what_ in targetDEVICE.subsets.keys()
+                            if not what_ == what ])
             )
 
 
@@ -557,7 +550,8 @@ else:
                     ifaceNameCleaned,
                     start
                 )
-            rrdbase = '%s/%s/%s.rrd' % (
+
+            rrdb = '%s/%s/%s.rrd' % (
                     rrddir,
                     targetDEVICE.hostname,
                     ifaceNameCleaned
