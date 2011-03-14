@@ -2,4 +2,4 @@
 #
 #
 
-from sdtg import *
+from spybg import *
