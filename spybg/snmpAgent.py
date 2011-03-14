@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 
-from sdtg import commonFuncs
+from spybg import commonFuncs
 
 class oid:
     def __init__(self, name, value, alias=None):

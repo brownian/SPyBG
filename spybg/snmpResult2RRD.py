@@ -11,7 +11,7 @@ from psycopg2.extensions import adapt
 
 from datetime import datetime
 
-from sdtg import commonFuncs, snmpAgent
+from spybg import commonFuncs, snmpAgent
 
 
 step = '120'
