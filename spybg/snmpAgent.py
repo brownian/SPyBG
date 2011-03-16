@@ -136,7 +136,7 @@ class snmpDevice:
             requestHandle = self.asynCommandGenerator.asyncBulkCmd(
                     self.CommunityData,
                     self.UdpTransportTarget,
-                    0, 20,
+                    0, self.bulksize,
                     (o.value,),
                     (self.cbFun, (r, o.value, ports))
                 )

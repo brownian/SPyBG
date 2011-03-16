@@ -327,7 +327,19 @@ def snmpResult2RRD3(host):
     # sort oids to guarantee proper o.alias's order:
     lOids.sort(commonFuncs.sortOids)
 
-    for index, ifname in host.ifnamesDict.items():
+
+    inioverride = '%s/%s.override' % (host.hostdir, host.ifacesfile)
+
+    if os.access(inioverride, os.F_OK):
+        ifnamesOverride = ConfigParser.ConfigParser()
+        ifnamesOverride.read(inioverride)
+        ifnamesPairs = [ (int(index), value)
+                for index, value in ifnamesOverride.items('ifnames') ]
+    else:
+        ifnamesPairs = host.ifnamesDict.items()
+
+
+    for index, ifname in ifnamesPairs:
 
         lDsValues = []
 

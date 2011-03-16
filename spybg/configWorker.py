@@ -196,6 +196,7 @@ class configWorker:
         # common snmp parameters:
         snmp_timeout = 1
         snmp_retries = 3
+        snmp_bulksize = 15
         if self.config.has_option('hosts', 'version'):
             snmp_version = self.config.get('hosts', 'version')
         else:
@@ -206,6 +207,8 @@ class configWorker:
                 snmp_timeout = int(self.config.get('snmp', 'timeout'))
             if self.config.has_option('snmp', 'retries'):
                 snmp_retries = int(self.config.get('snmp', 'retries'))
+            if self.config.has_option('snmp', 'bulksize'):
+                snmp_retries = int(self.config.get('snmp', 'bulksize'))
         #
         # config for hosts (in a separate file):
         self.hostsfile = self.config.get('hosts', 'hostsfile')
@@ -225,6 +228,7 @@ class configWorker:
             snmp_to = snmp_timeout
             snmp_rt = snmp_retries
             snmp_ve = snmp_version
+            snmp_bs = snmp_bulksize
             #
             # timeout:
             if self.hostsconfig.has_option(host, 'timeout'):
@@ -239,6 +243,13 @@ class configWorker:
             # set to host:
             if snmp_rt:
                 h.retries = snmp_rt
+            #
+            # bulksize:
+            if self.hostsconfig.has_option(host, 'bulksize'):
+                snmp_bs = int(self.hostsconfig.get(host, 'bulksize'))
+            # set to host:
+            if snmp_bs:
+                h.bulksize = snmp_bs
             #
             # version:
             if self.hostsconfig.has_option(host, 'version'):
