@@ -208,7 +208,7 @@ class configWorker:
             if self.config.has_option('snmp', 'retries'):
                 snmp_retries = int(self.config.get('snmp', 'retries'))
             if self.config.has_option('snmp', 'bulksize'):
-                snmp_retries = int(self.config.get('snmp', 'bulksize'))
+                snmp_bulksize = int(self.config.get('snmp', 'bulksize'))
         #
         # config for hosts (in a separate file):
         self.hostsfile = self.config.get('hosts', 'hostsfile')
