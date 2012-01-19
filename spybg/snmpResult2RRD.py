@@ -385,10 +385,7 @@ def snmpResult2RRD3(host):
     try:
         rrdtool.update(rrdbase, updstr) 
     except Exception, why:
-        print "Error in update (%s, %s) - %s" % (
-                            host.hostname,
-                            index,
-                            why )
+        print "Error in update - %s" % ( why )
 
     return True
 #
