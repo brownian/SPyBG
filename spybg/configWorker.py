@@ -124,7 +124,8 @@ def getAliasOid(host):
         #
         'ePON':         ( 'utstar',  (1,3,6,1,2,1,2,2,1,2) ),
         #
-        'ExtremeXOS':   ( 'extreme', (1,3,6,1,2,1,2,2,1,2) ),
+        # 'ExtremeXOS':   ( 'extreme', (1,3,6,1,2,1,2,2,1,2) ),
+        'ExtremeXOS':   ( 'extreme', (1,3,6,1,2,1,31,1,1,1,18) ),
         #
         'ZXR10':        ( 'zte', (1,3,6,1,2,1,2,2,1,2) ),
         #
